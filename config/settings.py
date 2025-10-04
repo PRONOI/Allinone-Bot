@@ -14,7 +14,7 @@ WEBHOOK_URL    = os.getenv("WEBHOOK_URL")
 TIER_ONE_HANDLES = {
     "13334762":  "FabrizioRomano",   # global “Here we go”
     "789456":    "gerardromero",     # Jijantes FC / Barça board leaks
-    "19800114":  "orioldomenech",    # Cat Radio, inside info
+    "28271466":  "orioldomenech",    # Cat Radio, inside info
     "5388642":   "albert_roge",      # Relevo / Jijantes
     "4355981":   "javi_miguel",      # AS / Cadena SER
     "4728101":   "DBR8",             # David Bernabéu Reverter
