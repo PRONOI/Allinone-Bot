@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-BOT_TOKEN      = os.getenv("BOT_TOKEN")
+BOT_TOKEN      = os.getenv("8494296417:AAGSOP084f-TyrIwo6gdq7K-bjFK4i2vU44")
 MONGODB_URI    = os.getenv("MONGODB_URI")
 TWITTER_BEARER = os.getenv("TWITTER_BEARER")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
