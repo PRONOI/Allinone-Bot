@@ -1,7 +1,7 @@
 from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
 from config.settings import MONGODB_URI
 
-client = MongoClient('mongodb+srv://AsadAli:AsadAli@cluster0.3ejv7.mongodb.net/myFirstDatabase?retryWrites=true&w=majority')
+client = MongoClient('mongodb+srv://footballcontenthd:RizoeL@cluster0.z4ccfiu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
 db = client['my_database_name']
 news = db.news
 
