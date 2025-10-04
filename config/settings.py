@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN      = os.getenv("8494296417:AAGSOP084f-TyrIwo6gdq7K-bjFK4i2vU44")
-MONGODB_URI    = os.getenv("MONGODB_URI")
-TWITTER_BEARER = os.getenv("TWITTER_BEARER")
+MONGODB_URI    = os.getenv("mongodb+srv://AsadAli:AsadAli@cluster0.3ejv7.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
+TWITTER_BEARER = os.getenv("AAAAAAAAAAAAAAAAAAAAAIdj4gEAAAAAFdhOFrXgv08UoVlsQT1k7fFI2CE%3Dote1sHYDoPPGZIvMSJyfH3FCGXwRpyxo7ykFXu9ODszarUBwaw")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CHANNEL_ID     = os.getenv("-1003120225849")
 OWNER_ID       = os.getenv("1063334882")
