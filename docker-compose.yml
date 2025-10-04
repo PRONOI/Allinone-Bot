@@ -6,9 +6,17 @@ services:
     depends_on:
       - mongo
     entrypoint: ["/bin/sh", "-c", "sleep 5 && python -m src.main"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests,sys;sys.exit(0 if requests.get('http://localhost:8080/healthz').ok else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "8080:8080"   # health probe
   mongo:
-    image: mongo:6
+    image: mongo:6.0   # pinned minor
     volumes:
       - mongo_data:/data/db
 volumes:
   mongo_data:
+  
