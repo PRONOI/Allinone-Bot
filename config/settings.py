@@ -6,8 +6,8 @@ BOT_TOKEN      = os.getenv("BOT_TOKEN")
 MONGODB_URI    = os.getenv("MONGODB_URI")
 TWITTER_BEARER = os.getenv("TWITTER_BEARER")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-CHANNEL_ID     = os.getenv("CHANNEL_ID")
-OWNER_ID       = os.getenv("OWNER_ID")
+CHANNEL_ID     = os.getenv("-1003120225849")
+OWNER_ID       = os.getenv("1063334882")
 WEBHOOK_URL    = os.getenv("WEBHOOK_URL")
 
 # config/settings.py
