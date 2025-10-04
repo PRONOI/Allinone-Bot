@@ -8,4 +8,4 @@ async def introduce_bot(update, _):
         f"Questions? DM {OWNER_ID}"
     )
 
-auto_introduce = MessageHandler(filters.ChatType.PRIVATE & ~filters.COMMAND, introduce_bot)
+filters.ChatType.PRIVATE & ~filters.COMMAND
