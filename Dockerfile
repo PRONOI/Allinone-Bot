@@ -4,16 +4,16 @@ FROM python:3.11.9-slim
 # Set working directory
 WORKDIR /app
 
-# Copy dependencies and install
+# Copy and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m nltk.downloader punkt
 
-# Copy all project files
+# Copy project files
 COPY . .
 
-# Expose port for Render web service
+# Expose port for Render Web Service
 EXPOSE 8080
 
-# Start the FastAPI webhook server using uvicorn
+# Start FastAPI webhook server
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
