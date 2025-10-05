@@ -1,34 +1,14 @@
-# Telegram Bot
 python-telegram-bot[ext]==20.7
-
-# Database
 pymongo==4.6.0
-
-# Twitter scraping
 tweepy==4.14.0
-
-# News scraping
 newspaper3k==0.2.8
-
-# AI / OpenAI integration
 openai==1.10.0
-
-# Environment variables
 python-dotenv==1.0.0
-
-# NLP / Text processing
 nltk==3.8.1
-
-# Emojis
 emoji==2.10.1
-
-# HTTP & Web Framework
+Flask==3.0.3
+gunicorn==22.0.0
+aiohttp==3.9.5
 fastapi==0.109.0
 uvicorn==0.25.2
 requests==2.32.0
-
-# Async HTTP (Telegram & other async tasks)
-aiohttp==3.9.5
-
-# Optional production server (if needed)
-gunicorn==22.0.0
