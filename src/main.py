@@ -18,16 +18,13 @@ import requests
 
 # ---------- Fix imports for src/ package ----------
 SRC = Path(__file__).parent
-sys.path.insert(0, str(SRC))  # src/ as top-level for imports
+sys.path.insert(0, str(SRC))  # src/ is top-level for imports
 
 # ---------- Internal modules ----------
-from config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
-from database.crud import init_db
-from scrapers.twitter import stream_tier_one
-from bot.handlers import start, latest, confirmed, player, help_handler
-# Optional modules:
-# from filters.my_filters import some_filter
-# from utils.helpers import some_helper
+from .config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
+from .database.crud import init_db
+from .scrapers.twitter import stream_tier_one
+from .bot.handlers import start, latest, confirmed, player, help_handler
 
 # ---------- Startup ping ----------
 def _startup_ping():
@@ -38,11 +35,8 @@ def _startup_ping():
         return
     time.sleep(5)  # let Render flush logs
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    try:
-        r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
-        print("Startup ping:", r.status_code, r.text)
-    except Exception as e:
-        print("Startup ping failed:", e)
+    r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
+    print("Startup ping:", r.status_code, r.text)
 
 # ---------- Rate-limit ----------
 SEND_SEM = asyncio.Semaphore(25)
@@ -75,7 +69,12 @@ telegram_app.add_handler(confirmed)
 telegram_app.add_handler(player)
 telegram_app.add_handler(help_handler)
 
-# Webhook endpoint for Telegram
+# Homepage route
+@app.get("/")
+async def home():
+    return {"status": "Barça Transfer Bot is running!"}
+
+# Webhook endpoint
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     data = await request.json()
@@ -83,7 +82,7 @@ async def telegram_webhook(request: Request):
     await telegram_app.update_queue.put(update)
     return {"ok": True}
 
-# Health check endpoint
+# Health check
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
@@ -98,8 +97,8 @@ def main() -> None:
     # Start Twitter stream asynchronously
     asyncio.create_task(stream_tier_one(telegram_app.bot))
 
-    # Start FastAPI server with Render-compatible port
-    PORT = int(os.environ.get("PORT", 10000))
+    # Start FastAPI server
+    PORT = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
