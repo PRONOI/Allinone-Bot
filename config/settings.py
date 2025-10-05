@@ -6,11 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ---------- required ----------
-BOT_TOKEN      = os.environ["BOT_TOKEN"]          # 46-50 chars, no spaces
+BOT_TOKEN      = os.environ["8494296417:AAGSOP084f-TyrIwo6gdq7K-bjFK4i2vU44"]          # 46-50 chars, no spaces
 MONGODB_URI    = os.environ["mongodb+srv://footballcontenthd:RizoeL@cluster0.j4idtvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"]        # full Atlas or local string
 TWITTER_BEARER = os.environ["AAAAAAAAAAAAAAAAAAAAAIdj4gEAAAAAFdhOFrXgv08UoVlsQT1k7fFI2CE%3Dote1sHYDoPPGZIvMSJyfH3FCGXwRpyxo7ykFXu9ODszarUBwaw"]     # Twitter Developer bearer
-CHANNEL_ID     = os.environ["CHANNEL_ID"]         # @ChannelName or numeric ID
-OWNER_ID       = os.environ["OWNER_ID"]           # @YourUsername or numeric ID
+CHANNEL_ID     = os.environ["-1003120225849"]         # @ChannelName or numeric ID
+OWNER_ID       = os.environ["1003120225849"]           # @YourUsername or numeric ID
 
 # ---------- optional ----------
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or None
