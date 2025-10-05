@@ -13,6 +13,7 @@ from pymongo import MongoClient
 from telegram import Update
 from telegram.ext import Application
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 import uvicorn
 import requests
 
@@ -33,7 +34,7 @@ def _startup_ping():
     if not token or not owner:
         print("❌  BOT_TOKEN or OWNER_ID missing")
         return
-    time.sleep(5)  # let Render flush logs
+    time.sleep(5)
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
     print("Startup ping:", r.status_code, r.text)
@@ -69,12 +70,14 @@ telegram_app.add_handler(confirmed)
 telegram_app.add_handler(player)
 telegram_app.add_handler(help_handler)
 
-# Homepage route
-@app.get("/")
-async def home():
+# Home route to handle GET and HEAD
+@app.get("/", methods=["GET", "HEAD"])
+async def home(request: Request):
+    if request.method == "HEAD":
+        return JSONResponse(status_code=200, content=None)
     return {"status": "Barça Transfer Bot is running!"}
 
-# Webhook endpoint
+# Webhook route
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     data = await request.json()
@@ -82,7 +85,7 @@ async def telegram_webhook(request: Request):
     await telegram_app.update_queue.put(update)
     return {"ok": True}
 
-# Health check
+# Health check route
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
