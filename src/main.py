@@ -19,6 +19,20 @@ from database.crud import init_db                               # noqa: E402
 from scrapers.twitter import stream_tier_one                    # noqa: E402
 from bot.handlers import start, latest, confirmed, player, help_handler  # noqa: E402
 
+# ---------- 1-A.  NEW:  startup ping ----------
+import os, requests   # add these two imports
+
+def _startup_ping():
+    token = os.environ.get("BOT_TOKEN")
+    owner = os.environ.get("OWNER_ID")
+    if not token or not owner:
+        print("❌  BOT_TOKEN or OWNER_ID missing")
+        return
+    time.sleep(5)   # let Render flush logs
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
+    print("Startup ping:", r.status_code, r.text)
+
 # ---------- 1.  rate-limit  ----------
 SEND_SEM = asyncio.Semaphore(25)   # max 25 concurrent sends
 
@@ -47,6 +61,7 @@ def _signal_handler(app: Application) -> None:
 
 # ---------- main ----------
 def main() -> None:
+    _startup_ping()      # ← call it first
     _wait_mongo(MONGODB_URI)
     init_db()
 
@@ -89,4 +104,3 @@ async def _polling(app: Application) -> None:
 
 if __name__ == "__main__":
     main()
-    
