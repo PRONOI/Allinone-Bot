@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Barça Transfer Bot – entry point (webhook-ready)"""
+"""Barça Transfer Bot – webhook-ready FastAPI version"""
 from __future__ import annotations
 
 import asyncio
@@ -16,26 +16,27 @@ from fastapi import FastAPI, Request
 import uvicorn
 import requests
 
-# ---------- Add src to sys.path ----------
+# ---------- src folder as top-level ----------
 SRC = Path(__file__).parent
-sys.path.insert(0, str(SRC))  # src/ is top-level for imports
+sys.path.insert(0, str(SRC))
 
 # ---------- Internal modules ----------
 from config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
 from database.crud import init_db
 from scrapers.twitter import stream_tier_one
 from bot.handlers import start, latest, confirmed, player, help_handler
+# Optional: filters, utils
+# from filters.my_filters import some_filter
+# from utils.helpers import some_helper
 
 # ---------- Startup ping ----------
 def _startup_ping():
-    token = BOT_TOKEN
-    owner = OWNER_ID
-    if not token or not owner:
+    if not BOT_TOKEN or not OWNER_ID:
         print("❌ BOT_TOKEN or OWNER_ID missing")
         return
-    time.sleep(5)  # allow logs to flush
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
+    time.sleep(5)  # let Render flush logs
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    r = requests.post(url, json={"chat_id": OWNER_ID, "text": "Bot starting…"})
     print("Startup ping:", r.status_code, r.text)
 
 # ---------- Rate-limit ----------
@@ -45,7 +46,7 @@ SEND_SEM = asyncio.Semaphore(25)
 def _wait_mongo(uri: str, timeout: int = 30) -> None:
     for _ in range(timeout):
         try:
-            MongoClient(uri, serverSelectionTimeoutMS=2000).admin.command("ping")
+            MongoClient(uri, serverSelectionTimeoutMS=2_000).admin.command("ping")
             return
         except Exception:
             time.sleep(1)
@@ -58,11 +59,11 @@ def _signal_handler(app: Application) -> None:
     signal.signal(signal.SIGINT, _inner)
     signal.signal(signal.SIGTERM, _inner)
 
-# ---------- FastAPI webhook app ----------
+# ---------- FastAPI app ----------
 app = FastAPI()
 telegram_app = Application.builder().token(BOT_TOKEN).build()
 
-# Add handlers
+# Add Telegram handlers
 telegram_app.add_handler(start)
 telegram_app.add_handler(latest)
 telegram_app.add_handler(confirmed)
