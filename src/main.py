@@ -11,20 +11,25 @@ from pathlib import Path
 
 from pymongo import MongoClient
 from telegram import Update
-from telegram.ext import Application  # ✅ Dispatcher removed
+from telegram.ext import Application
 from fastapi import FastAPI, Request
 import uvicorn
 import requests
 
+# ---------- Fix imports for src/ package ----------
 SRC = Path(__file__).parent
-sys.path.insert(0, str(SRC.parent))
+sys.path.insert(0, str(SRC))  # src/ is top-level for imports
 
-from config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID  # noqa: E402
-from database.crud import init_db                               # noqa: E402
-from scrapers.twitter import stream_tier_one                    # noqa: E402
-from bot.handlers import start, latest, confirmed, player, help_handler  # noqa: E402
+# ---------- Internal modules using relative imports ----------
+from .config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
+from .database.crud import init_db
+from .scrapers.twitter import stream_tier_one
+from .bot.handlers import start, latest, confirmed, player, help_handler
+# You can add other modules like filters or utils if needed
+# from .filters.my_filters import some_filter
+# from .utils.helpers import some_helper
 
-# ---------- 1-A. Startup ping ----------
+# ---------- Startup ping ----------
 def _startup_ping():
     token = BOT_TOKEN
     owner = OWNER_ID
@@ -36,8 +41,8 @@ def _startup_ping():
     r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
     print("Startup ping:", r.status_code, r.text)
 
-# ---------- 1. Rate-limit ----------
-SEND_SEM = asyncio.Semaphore(25)  # max 25 concurrent sends
+# ---------- Rate-limit ----------
+SEND_SEM = asyncio.Semaphore(25)
 
 # ---------- Helpers ----------
 def _wait_mongo(uri: str, timeout: int = 30) -> None:
@@ -45,28 +50,28 @@ def _wait_mongo(uri: str, timeout: int = 30) -> None:
         try:
             MongoClient(uri, serverSelectionTimeoutMS=2_000).admin.command("ping")
             return
-        except Exception:  # noqa: S112
+        except Exception:
             time.sleep(1)
     sys.exit("Mongo unavailable")
 
 def _signal_handler(app: Application) -> None:
-    def _inner(signum, frame) -> None:  # noqa: ARG001
+    def _inner(signum, frame):
         asyncio.create_task(app.shutdown())
         sys.exit(0)
     signal.signal(signal.SIGINT, _inner)
     signal.signal(signal.SIGTERM, _inner)
 
-# ---------- FastAPI app for webhook ----------
+# ---------- FastAPI webhook app ----------
 app = FastAPI()
-
 telegram_app = Application.builder().token(BOT_TOKEN).build()
+
+# Add handlers
 telegram_app.add_handler(start)
 telegram_app.add_handler(latest)
 telegram_app.add_handler(confirmed)
 telegram_app.add_handler(player)
 telegram_app.add_handler(help_handler)
 
-# FastAPI endpoint for Telegram updates
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     data = await request.json()
@@ -74,7 +79,6 @@ async def telegram_webhook(request: Request):
     await telegram_app.update_queue.put(update)
     return {"ok": True}
 
-# Health check endpoint
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
@@ -86,10 +90,10 @@ def main() -> None:
     init_db()
     _signal_handler(telegram_app)
 
-    # Start Twitter stream task
+    # Start Twitter stream asynchronously
     asyncio.create_task(stream_tier_one(telegram_app.bot))
 
-    # Start FastAPI server (webhook)
+    # Start FastAPI server
     PORT = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 
