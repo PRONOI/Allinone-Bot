@@ -16,27 +16,24 @@ from fastapi import FastAPI, Request
 import uvicorn
 import requests
 
-# ---------- Fix imports for src/ package ----------
+# ---------- Add src to sys.path ----------
 SRC = Path(__file__).parent
 sys.path.insert(0, str(SRC))  # src/ is top-level for imports
 
-# ---------- Internal modules using relative imports ----------
-from .config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
-from .database.crud import init_db
-from .scrapers.twitter import stream_tier_one
-from .bot.handlers import start, latest, confirmed, player, help_handler
-# You can add other modules like filters or utils if needed
-# from .filters.my_filters import some_filter
-# from .utils.helpers import some_helper
+# ---------- Internal modules ----------
+from config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
+from database.crud import init_db
+from scrapers.twitter import stream_tier_one
+from bot.handlers import start, latest, confirmed, player, help_handler
 
 # ---------- Startup ping ----------
 def _startup_ping():
     token = BOT_TOKEN
     owner = OWNER_ID
     if not token or not owner:
-        print("❌  BOT_TOKEN or OWNER_ID missing")
+        print("❌ BOT_TOKEN or OWNER_ID missing")
         return
-    time.sleep(5)  # let Render flush logs
+    time.sleep(5)  # allow logs to flush
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
     print("Startup ping:", r.status_code, r.text)
@@ -48,7 +45,7 @@ SEND_SEM = asyncio.Semaphore(25)
 def _wait_mongo(uri: str, timeout: int = 30) -> None:
     for _ in range(timeout):
         try:
-            MongoClient(uri, serverSelectionTimeoutMS=2_000).admin.command("ping")
+            MongoClient(uri, serverSelectionTimeoutMS=2000).admin.command("ping")
             return
         except Exception:
             time.sleep(1)
