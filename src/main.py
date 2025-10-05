@@ -22,10 +22,13 @@ SRC = Path(__file__).parent
 sys.path.insert(0, str(SRC))  # src/ is top-level for imports
 
 # ---------- Internal modules ----------
-from .config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
-from .database.crud import init_db
-from .scrapers.twitter import stream_tier_one
-from .bot.handlers import start, latest, confirmed, player, help_handler
+from config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
+from database.crud import init_db
+from scrapers.twitter import stream_tier_one
+from bot.handlers import start, latest, confirmed, player, help_handler
+# Add other modules if needed, e.g., filters, utils
+# from filters.my_filters import some_filter
+# from utils.helpers import some_helper
 
 # ---------- Startup ping ----------
 def _startup_ping():
@@ -34,7 +37,7 @@ def _startup_ping():
     if not token or not owner:
         print("❌  BOT_TOKEN or OWNER_ID missing")
         return
-    time.sleep(5)
+    time.sleep(5)  # let Render flush logs
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
     print("Startup ping:", r.status_code, r.text)
@@ -63,21 +66,14 @@ def _signal_handler(app: Application) -> None:
 app = FastAPI()
 telegram_app = Application.builder().token(BOT_TOKEN).build()
 
-# Add handlers
+# Add Telegram handlers
 telegram_app.add_handler(start)
 telegram_app.add_handler(latest)
 telegram_app.add_handler(confirmed)
 telegram_app.add_handler(player)
 telegram_app.add_handler(help_handler)
 
-# Home route to handle GET and HEAD
-@app.get("/", methods=["GET", "HEAD"])
-async def home(request: Request):
-    if request.method == "HEAD":
-        return JSONResponse(status_code=200, content=None)
-    return {"status": "Barça Transfer Bot is running!"}
-
-# Webhook route
+# Telegram webhook endpoint
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     data = await request.json()
@@ -85,10 +81,17 @@ async def telegram_webhook(request: Request):
     await telegram_app.update_queue.put(update)
     return {"ok": True}
 
-# Health check route
+# Health check
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
+
+# Home route (supports GET and HEAD)
+@app.api_route("/", methods=["GET", "HEAD"])
+async def home(request: Request):
+    if request.method == "HEAD":
+        return JSONResponse(status_code=200, content=None)
+    return {"status": "Barça Transfer Bot is running!"}
 
 # ---------- Main ----------
 def main() -> None:
