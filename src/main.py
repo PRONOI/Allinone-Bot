@@ -11,7 +11,7 @@ from pathlib import Path
 
 from pymongo import MongoClient
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes, Dispatcher
+from telegram.ext import Application, Dispatcher
 from fastapi import FastAPI, Request
 import uvicorn
 import requests
@@ -58,9 +58,7 @@ def _signal_handler(app: Application) -> None:
 
 # ---------- FastAPI app for webhook ----------
 app = FastAPI()
-dp = Dispatcher()
 
-# Add handlers to a Telegram Application for webhook
 telegram_app = Application.builder().token(BOT_TOKEN).build()
 telegram_app.add_handler(start)
 telegram_app.add_handler(latest)
@@ -76,7 +74,7 @@ async def telegram_webhook(request: Request):
     await telegram_app.update_queue.put(update)
     return {"ok": True}
 
-# Optional health endpoint
+# Health check
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
@@ -88,10 +86,10 @@ def main() -> None:
     init_db()
     _signal_handler(telegram_app)
 
-    # Start Telegram application (async)
-    asyncio.create_task(stream_tier_one(telegram_app.bot))  # Twitter streaming
+    # Start Twitter stream task
+    asyncio.create_task(stream_tier_one(telegram_app.bot))
 
-    # Start webhook polling using FastAPI + uvicorn
+    # Start FastAPI server (webhook)
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 if __name__ == "__main__":
