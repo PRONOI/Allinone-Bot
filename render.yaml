@@ -1,7 +1,7 @@
 services:
-  - type: worker          #  <- stops the port scan
+  - type: worker
     name: allinone-bot
     env: python
+    pythonVersion: 3.11.9      # <-- full patch version
     buildCommand: pip install -r requirements.txt
     startCommand: python src/main.py
-    
