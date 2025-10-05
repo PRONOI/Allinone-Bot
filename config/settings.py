@@ -7,8 +7,8 @@ load_dotenv()
 
 # ---------- required ----------
 BOT_TOKEN      = os.environ["BOT_TOKEN"]          # 46-50 chars, no spaces
-MONGODB_URI    = os.environ["MONGODB_URI"]        # full Atlas or local string
-TWITTER_BEARER = os.environ["TWITTER_BEARER"]     # Twitter Developer bearer
+MONGODB_URI    = os.environ["mongodb+srv://footballcontenthd:RizoeL@cluster0.j4idtvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"]        # full Atlas or local string
+TWITTER_BEARER = os.environ["AAAAAAAAAAAAAAAAAAAAAIdj4gEAAAAAFdhOFrXgv08UoVlsQT1k7fFI2CE%3Dote1sHYDoPPGZIvMSJyfH3FCGXwRpyxo7ykFXu9ODszarUBwaw"]     # Twitter Developer bearer
 CHANNEL_ID     = os.environ["CHANNEL_ID"]         # @ChannelName or numeric ID
 OWNER_ID       = os.environ["OWNER_ID"]           # @YourUsername or numeric ID
 
