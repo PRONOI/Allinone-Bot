@@ -11,7 +11,7 @@ from pathlib import Path
 
 from pymongo import MongoClient
 from telegram import Update
-from telegram.ext import Application, Dispatcher
+from telegram.ext import Application  # ✅ Dispatcher removed
 from fastapi import FastAPI, Request
 import uvicorn
 import requests
@@ -24,22 +24,22 @@ from database.crud import init_db                               # noqa: E402
 from scrapers.twitter import stream_tier_one                    # noqa: E402
 from bot.handlers import start, latest, confirmed, player, help_handler  # noqa: E402
 
-# ---------- 1-A.  startup ping ----------
+# ---------- 1-A. Startup ping ----------
 def _startup_ping():
     token = BOT_TOKEN
     owner = OWNER_ID
     if not token or not owner:
         print("❌  BOT_TOKEN or OWNER_ID missing")
         return
-    time.sleep(5)   # let Render flush logs
+    time.sleep(5)  # let Render flush logs
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
     print("Startup ping:", r.status_code, r.text)
 
-# ---------- 1.  rate-limit  ----------
-SEND_SEM = asyncio.Semaphore(25)   # max 25 concurrent sends
+# ---------- 1. Rate-limit ----------
+SEND_SEM = asyncio.Semaphore(25)  # max 25 concurrent sends
 
-# ---------- helpers ----------
+# ---------- Helpers ----------
 def _wait_mongo(uri: str, timeout: int = 30) -> None:
     for _ in range(timeout):
         try:
@@ -74,12 +74,12 @@ async def telegram_webhook(request: Request):
     await telegram_app.update_queue.put(update)
     return {"ok": True}
 
-# Health check
+# Health check endpoint
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
 
-# ---------- main ----------
+# ---------- Main ----------
 def main() -> None:
     _startup_ping()
     _wait_mongo(MONGODB_URI)
@@ -90,7 +90,8 @@ def main() -> None:
     asyncio.create_task(stream_tier_one(telegram_app.bot))
 
     # Start FastAPI server (webhook)
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    PORT = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
     main()
