@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Barça Transfer Bot – webhook-ready FastAPI version"""
+"""Barça Transfer Bot – entry point (webhook-ready)"""
 from __future__ import annotations
 
 import asyncio
@@ -16,28 +16,33 @@ from fastapi import FastAPI, Request
 import uvicorn
 import requests
 
-# ---------- src folder as top-level ----------
+# ---------- Fix imports for src/ package ----------
 SRC = Path(__file__).parent
-sys.path.insert(0, str(SRC))
+sys.path.insert(0, str(SRC))  # src/ as top-level for imports
 
 # ---------- Internal modules ----------
 from config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID
 from database.crud import init_db
 from scrapers.twitter import stream_tier_one
 from bot.handlers import start, latest, confirmed, player, help_handler
-# Optional: filters, utils
+# Optional modules:
 # from filters.my_filters import some_filter
 # from utils.helpers import some_helper
 
 # ---------- Startup ping ----------
 def _startup_ping():
-    if not BOT_TOKEN or not OWNER_ID:
-        print("❌ BOT_TOKEN or OWNER_ID missing")
+    token = BOT_TOKEN
+    owner = OWNER_ID
+    if not token or not owner:
+        print("❌  BOT_TOKEN or OWNER_ID missing")
         return
     time.sleep(5)  # let Render flush logs
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    r = requests.post(url, json={"chat_id": OWNER_ID, "text": "Bot starting…"})
-    print("Startup ping:", r.status_code, r.text)
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    try:
+        r = requests.post(url, json={"chat_id": owner, "text": "Bot starting…"})
+        print("Startup ping:", r.status_code, r.text)
+    except Exception as e:
+        print("Startup ping failed:", e)
 
 # ---------- Rate-limit ----------
 SEND_SEM = asyncio.Semaphore(25)
@@ -59,17 +64,18 @@ def _signal_handler(app: Application) -> None:
     signal.signal(signal.SIGINT, _inner)
     signal.signal(signal.SIGTERM, _inner)
 
-# ---------- FastAPI app ----------
+# ---------- FastAPI webhook app ----------
 app = FastAPI()
 telegram_app = Application.builder().token(BOT_TOKEN).build()
 
-# Add Telegram handlers
+# Add handlers
 telegram_app.add_handler(start)
 telegram_app.add_handler(latest)
 telegram_app.add_handler(confirmed)
 telegram_app.add_handler(player)
 telegram_app.add_handler(help_handler)
 
+# Webhook endpoint for Telegram
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     data = await request.json()
@@ -77,6 +83,7 @@ async def telegram_webhook(request: Request):
     await telegram_app.update_queue.put(update)
     return {"ok": True}
 
+# Health check endpoint
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
@@ -91,8 +98,8 @@ def main() -> None:
     # Start Twitter stream asynchronously
     asyncio.create_task(stream_tier_one(telegram_app.bot))
 
-    # Start FastAPI server
-    PORT = int(os.environ.get("PORT", 8080))
+    # Start FastAPI server with Render-compatible port
+    PORT = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
