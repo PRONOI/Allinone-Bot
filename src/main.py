@@ -1,30 +1,33 @@
 #!/usr/bin/env python3
-"""Barça Transfer Bot – entry point"""
+"""Barça Transfer Bot – entry point (webhook-ready)"""
 from __future__ import annotations
 
 import asyncio
+import os
 import signal
 import sys
 import time
 from pathlib import Path
 
 from pymongo import MongoClient
-from telegram.ext import Application
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes, Dispatcher
+from fastapi import FastAPI, Request
+import uvicorn
+import requests
 
 SRC = Path(__file__).parent
 sys.path.insert(0, str(SRC.parent))
 
-from config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL  # noqa: E402
+from config.settings import BOT_TOKEN, MONGODB_URI, WEBHOOK_URL, OWNER_ID  # noqa: E402
 from database.crud import init_db                               # noqa: E402
 from scrapers.twitter import stream_tier_one                    # noqa: E402
 from bot.handlers import start, latest, confirmed, player, help_handler  # noqa: E402
 
-# ---------- 1-A.  NEW:  startup ping ----------
-import os, requests   # add these two imports
-
+# ---------- 1-A.  startup ping ----------
 def _startup_ping():
-    token = os.environ.get("BOT_TOKEN")
-    owner = os.environ.get("OWNER_ID")
+    token = BOT_TOKEN
+    owner = OWNER_ID
     if not token or not owner:
         print("❌  BOT_TOKEN or OWNER_ID missing")
         return
@@ -35,12 +38,6 @@ def _startup_ping():
 
 # ---------- 1.  rate-limit  ----------
 SEND_SEM = asyncio.Semaphore(25)   # max 25 concurrent sends
-
-# ---------- 2.  health stub  ----------
-if WEBHOOK_URL:
-    from aiohttp import web
-    async def health(_: web.Request) -> web.Response:
-        return web.Response(text="ok")
 
 # ---------- helpers ----------
 def _wait_mongo(uri: str, timeout: int = 30) -> None:
@@ -59,48 +56,43 @@ def _signal_handler(app: Application) -> None:
     signal.signal(signal.SIGINT, _inner)
     signal.signal(signal.SIGTERM, _inner)
 
+# ---------- FastAPI app for webhook ----------
+app = FastAPI()
+dp = Dispatcher()
+
+# Add handlers to a Telegram Application for webhook
+telegram_app = Application.builder().token(BOT_TOKEN).build()
+telegram_app.add_handler(start)
+telegram_app.add_handler(latest)
+telegram_app.add_handler(confirmed)
+telegram_app.add_handler(player)
+telegram_app.add_handler(help_handler)
+
+# FastAPI endpoint for Telegram updates
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, telegram_app.bot)
+    await telegram_app.update_queue.put(update)
+    return {"ok": True}
+
+# Optional health endpoint
+@app.get("/healthz")
+async def health():
+    return {"status": "ok"}
+
 # ---------- main ----------
 def main() -> None:
-    _startup_ping()      # ← call it first
+    _startup_ping()
     _wait_mongo(MONGODB_URI)
     init_db()
+    _signal_handler(telegram_app)
 
-    app = Application.builder().token(BOT_TOKEN).build()
-    _signal_handler(app)
+    # Start Telegram application (async)
+    asyncio.create_task(stream_tier_one(telegram_app.bot))  # Twitter streaming
 
-    # commands
-    app.add_handler(start)
-    app.add_handler(latest)
-    app.add_handler(confirmed)
-    app.add_handler(player)
-    app.add_handler(help_handler)
-
-    # webhook mode → health endpoint
-    if WEBHOOK_URL:
-        runner = web.AppRunner(web.Application())
-        runner.app.router.add_get("/healthz", health)
-        asyncio.run(runner.setup())
-        site = web.TCPSite(runner, "0.0.0.0", 8080)
-        asyncio.create_task(site.start())
-
-        app.run_webhook(
-            listen="0.0.0.0",
-            port=8443,
-            url_path="webhook",
-            webhook_url=WEBHOOK_URL,
-        )
-    else:
-        asyncio.run(_polling(app))
-
-
-async def _polling(app: Application) -> None:
-    await app.initialize()
-    async with app:
-        asyncio.create_task(stream_tier_one(app.bot))
-        await app.start()
-        await app.updater.start_polling()  # type: ignore[attr-defined]
-        await app.updater.idle()           # type: ignore[attr-defined]
-
+    # Start webhook polling using FastAPI + uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 if __name__ == "__main__":
     main()
