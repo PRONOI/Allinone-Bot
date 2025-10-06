@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Barça Transfer Bot – Render-ready with webhook"""
+"""Barça Transfer Bot – Render-ready with auto webhook verification"""
 
 from __future__ import annotations
 import asyncio
@@ -27,9 +27,9 @@ from database.crud import init_db
 from scrapers.twitter import stream_tier_one
 from bot.handlers import start, latest, confirmed, player, help_handler
 
-# ---------- Startup ping ----------
+# ---------- Startup Ping ----------
 def _startup_ping():
-    """Send a startup message to the bot owner (optional for logs)."""
+    """Send a startup message to the bot owner."""
     if not BOT_TOKEN or not OWNER_ID:
         print("❌ BOT_TOKEN or OWNER_ID missing.")
         return
@@ -41,7 +41,7 @@ def _startup_ping():
     except Exception as e:
         print("Failed startup ping:", e)
 
-# ---------- Helpers ----------
+# ---------- Mongo Wait ----------
 def _wait_mongo(uri: str, timeout: int = 30) -> None:
     """Wait for MongoDB to become available."""
     for _ in range(timeout):
@@ -53,6 +53,7 @@ def _wait_mongo(uri: str, timeout: int = 30) -> None:
             time.sleep(1)
     sys.exit("❌ Mongo unavailable after waiting 30 seconds.")
 
+# ---------- Graceful Shutdown ----------
 def _signal_handler(app: Application) -> None:
     """Graceful shutdown on SIGINT or SIGTERM."""
     def _inner(signum, frame):
@@ -68,72 +69,75 @@ async def shutdown_bot(app: Application):
     await app.shutdown()
     print("✅ Bot stopped.")
 
-# ---------- FastAPI webhook app ----------
+# ---------- FastAPI Webhook ----------
 app = FastAPI()
 telegram_app = Application.builder().token(BOT_TOKEN).build()
 
-# Add Telegram command handlers
+# Add handlers
 telegram_app.add_handler(start)
 telegram_app.add_handler(latest)
 telegram_app.add_handler(confirmed)
 telegram_app.add_handler(player)
 telegram_app.add_handler(help_handler)
 
-# Webhook endpoint for Telegram
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
-    """Handle incoming Telegram updates via webhook."""
+    """Handle incoming Telegram updates."""
     data = await request.json()
     update = Update.de_json(data, telegram_app.bot)
     await telegram_app.update_queue.put(update)
     return {"ok": True}
 
-# Health check for Render
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
 
-# Home route
 @app.api_route("/", methods=["GET", "HEAD"])
 async def home(request: Request):
     if request.method == "HEAD":
         return JSONResponse(status_code=200, content=None)
     return {"status": "Barça Transfer Bot is running!"}
 
-# ---------- Webhook setup ----------
-async def set_webhook():
-    """Set the Telegram webhook."""
-    if WEBHOOK_URL:
-        webhook_url = f"{WEBHOOK_URL.rstrip('/')}/webhook"
-        async with telegram_app.bot:
-            await telegram_app.bot.set_webhook(url=webhook_url)
-            print(f"✅ Webhook set successfully: {webhook_url}")
-    else:
+# ---------- Webhook Setup + Verification ----------
+async def set_and_verify_webhook():
+    """Set the Telegram webhook and verify it."""
+    if not WEBHOOK_URL:
         print("⚠️ WEBHOOK_URL not set, skipping webhook setup.")
+        return
 
-# ---------- Main async entry ----------
+    webhook_url = f"{WEBHOOK_URL.rstrip('/')}/webhook"
+    async with telegram_app.bot:
+        await telegram_app.bot.set_webhook(url=webhook_url)
+        print(f"✅ Webhook set successfully: {webhook_url}")
+
+        # Auto verify webhook
+        info = await telegram_app.bot.get_webhook_info()
+        print("🔍 Webhook verification:")
+        print(f"    URL: {info.url}")
+        print(f"    Pending updates: {info.pending_update_count}")
+        if info.last_error_date:
+            print(f"    ⚠️ Last error: {info.last_error_message}")
+
+# ---------- Main Async ----------
 async def main_async():
     _startup_ping()
     _wait_mongo(MONGODB_URI)
     init_db()
     _signal_handler(telegram_app)
 
-    # Start Twitter stream asynchronously
     asyncio.create_task(stream_tier_one(telegram_app.bot))
 
-    # Initialize and start Telegram bot (webhook mode)
     await telegram_app.initialize()
     await telegram_app.start()
-    await set_webhook()
-    print("✅ Telegram bot started and webhook active.")
+    await set_and_verify_webhook()
+    print("✅ Telegram bot started and webhook verified.")
 
-    # Start FastAPI server
     PORT = int(os.environ.get("PORT", 8080))
     print(f"🌍 Starting FastAPI server on port {PORT}")
     config = uvicorn.Config(app, host="0.0.0.0", port=PORT)
     server = uvicorn.Server(config)
     await server.serve()
 
-# ---------- Main ----------
+# ---------- Entry ----------
 if __name__ == "__main__":
     asyncio.run(main_async())
